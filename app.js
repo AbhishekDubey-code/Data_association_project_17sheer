@@ -19,10 +19,27 @@ app.get('/login', (req, res) => {
     res.render("login");
 });
 // protected route
-app.get('/profile',isLoggedIN, (req, res) => {
-    console.log(req.user);
-    res.send("You are inside the protected route 'Profile' because you are logged in. You will not be here if you log out. Feel free to try!");
+app.get('/profile',isLoggedIN,async (req, res) => {
+   let user = await userModel.findOne({email:req.user.email}).populate("posts")
+//    console.log(user);  
+    res.render("profile",{user}); 
+   
 });
+
+app.post('/post',isLoggedIN,async (req, res) => {
+    let user = await userModel.findOne({email:req.user.email})
+    let {content} = req.body;
+
+    let post = await postModel.create({
+        user:user._id,
+        content: content
+    });
+
+    user.posts.push(post._id);
+    await user.save();
+    res.redirect("/profile");
+    
+ });
 
 app.post('/register', async (req, res) => {
     let { email, password, username, name, age } = req.body
@@ -58,7 +75,8 @@ app.post('/login', async (req, res) => {
     if (!user) return res.status(500).send("Something went wrong");
 
     bcrypt.compare(password,user.password, function (err,result){
-        if(result) res.status(200).send("login sucessfull!");
+        // if(result) res.status(200).send("login sucessfull!");
+        if(result) res.status(200).redirect("/profile");
         else res.redirect("/login")
 
     })
@@ -74,7 +92,8 @@ app.get('/logout', (req, res) => {
 
 //is login middleware
 function isLoggedIN(req,res,next){
-    if(req.cookies.token ==="") res.send("you must be loggedin");
+    // if(req.cookies.token ==="") res.send("you must be loggedin");
+    if(req.cookies.token ==="") res.redirect("/login");
     else{
         let data = jwt.verify(req.cookies.token,"shhhhh");
         req.user= data;
