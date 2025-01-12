@@ -26,6 +26,42 @@ app.get('/profile',isLoggedIN,async (req, res) => {
    
 });
 
+app.get('/like/:id',isLoggedIN,async (req, res) => {
+    let post = await postModel.findOne({_id:req.params.id}).populate("user")
+    // console.log(req.user); 
+    if(post.likes.indexOf(req.user.userid)=== -1){
+        post.likes.push(req.user.userid)  
+    }
+    else{
+        post.likes.splice(post.likes.indexOf(req.user.userid),1);
+    }
+
+    await post.save()
+     res.redirect("/profile"); 
+    
+ });
+
+ app.get('/edit/:id',isLoggedIN,async (req, res) => {
+    let post = await postModel.findOne({_id:req.params.id}).populate("user")
+    // console.log(req.user); 
+    res.render('edit',{post});
+    
+ });
+
+ app.get('/delete/:id',isLoggedIN,async (req, res) => {
+    let post = await postModel.findOneAndDelete({_id:req.params.id}).populate("user")
+    // console.log(req.user); 
+    res.redirect('/profile');
+    
+ });
+
+ app.post('/update/:id',isLoggedIN,async (req, res) => {
+    let post = await postModel.findOneAndUpdate({_id:req.params.id},{content:req.body.content})
+    // console.log(req.user); 
+    res.redirect('/profile');
+    
+ });
+
 app.post('/post',isLoggedIN,async (req, res) => {
     let user = await userModel.findOne({email:req.user.email})
     let {content} = req.body;
@@ -76,7 +112,11 @@ app.post('/login', async (req, res) => {
 
     bcrypt.compare(password,user.password, function (err,result){
         // if(result) res.status(200).send("login sucessfull!");
-        if(result) res.status(200).redirect("/profile");
+        if(result){
+            let token = jwt.sign({email:email, userid:user._id},"shhhhh");
+            res.cookie("token", token);
+             res.status(200).redirect("/profile");
+        }
         else res.redirect("/login")
 
     })
